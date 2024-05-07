@@ -307,14 +307,6 @@ void GameUpdateItems(Game *game) {
         return;
     }
 
-    if (IsKeyPressed(KEY_ENTER)) {
-        TilePosition tilePosition;
-
-        if (GameGetRandomEmptyTile(game, &tilePosition)) {
-            GameSpawnItem(game, ITEM_APPLE, tilePosition);
-        }
-    }
-
     double elapsedTimeSinceLastAppleDespawn = GetTime() - game->appleLastDespawnTime;
 
     if (game->appleSpawnCount < 1 && elapsedTimeSinceLastAppleDespawn >= game->appleSpawnRate) {
