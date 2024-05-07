@@ -112,6 +112,7 @@ typedef struct Game
     float appleSpawnRate;
     double appleLastDespawnTime;
     bool isPaused;
+    bool isOver;
 } Game;
 
 bool GameIsTileValid(TileMap *tileMap, TilePosition tilePosition) {
@@ -302,7 +303,7 @@ void GameDespawnItem(Game *game, Item *item) {
 }
 
 void GameUpdateItems(Game *game) {
-    if (game->isPaused) {
+    if (game->isPaused || game->isOver) {
         return;
     }
 
@@ -439,6 +440,15 @@ void GameDrawUI(Game *game) {
         int fontSize = 30;
         int textSize = MeasureText(text, fontSize);
         DrawText(text, game->viewportWidth / 2 - textSize / 2, game->viewportHeight / 2 - fontSize / 2, fontSize, WHITE);
+    } else if (game->isOver) {
+        // Overlay
+        DrawRectangle(0, 0, game->viewportWidth, game->viewportHeight, ColorAlpha(BLACK, 0.5));
+
+        // Game Over Text
+        char *text = "Game Over. Press ENTER to Restart";
+        int fontSize = 30;
+        int textSize = MeasureText(text, fontSize);
+        DrawText(text, game->viewportWidth / 2 - textSize / 2, game->viewportHeight / 2 - fontSize / 2, fontSize, WHITE);
     }
 }
 
@@ -464,7 +474,7 @@ bool GameSnakeHitItself(Snake *snake) {
 }
 
 void GameUpdateSnake(Game *game) {
-    if (game->isPaused) {
+    if (game->isPaused || game->isOver) {
         return;
     }
 
@@ -561,77 +571,16 @@ void GameUpdateSnake(Game *game) {
 
     if (snake->hasMove && GameSnakeHitItself(snake)) {
         printf("Snakehit itself\n");
+        game->isOver = true;
     }
 }
 
-void GameUpdate(Game *game) {
-    if (IsKeyPressed(KEY_SPACE)) {
-        game->isPaused = !game->isPaused;
-    }
-
-    GameUpdateItems(game);
-    GameUpdateSnake(game);
-}
-
-void GameDraw(Game *game) {
-    ClearBackground(BLACK);
-
-    GameDrawTileMap(&game->tileMap);
-    GameDrawItems(game);
-    GameDrawSnake(&game->snake);
-
-    GameDrawUI(game);
-}
-
-TileMap GameCreateTileMap(int rows, int cols, float tileWidth, float tileHeight) {
-    TileValue *tiles = (TileValue*) malloc(sizeof(TileValue) * rows * cols);
-
-    for (int i = 0; i < rows * cols; i++) {
-        tiles[i] = TILE_EMPTY;
-    }
-
-    TileMap tileMap = {
-        .rows = rows,
-        .cols = cols,
-        .tileWidth = tileWidth,
-        .tileHeight = tileHeight,
-        .tiles = tiles,
-    };
-
-    return tileMap;
-}
-
-void GameFreeTileMap(TileMap *tileMap) {
-    free(tileMap->tiles);
-}
-
-void GameInit(Game *game, int width, int height) {
-    game->viewportWidth = width;
-    game->viewportHeight = height;
-    game->score = 0;
-
-    int rows = 20;
-    int cols = 20;
-
-    TileValue *tiles = (TileValue*) malloc(sizeof(TileValue) * rows * cols);
-
-    for (int i = 0; i < rows * cols; i++) {
-        tiles[i] = TILE_EMPTY;
-    }
-
+void GameRestart(Game *game) {
     TilePosition initTilePosition = {.row = 1, .col = 1};
 
+    game->score = 0;
+    game->isOver = false;
     game->isPaused = false;
-    game->tileMap.rows = rows;
-    game->tileMap.cols = cols;
-    game->tileMap.tileWidth = width / cols;
-    game->tileMap.tileHeight = height / rows;
-    game->tileMap.tiles = tiles;
-    game->appleSpawnRate = 2;
-    game->eatSound = LoadSound("assets/eat.ogg");
-
-    game->snake.headWidth = game->tileMap.tileWidth;
-    game->snake.headHeight = game->tileMap.tileHeight;
     game->snake.direction.x = 0;
     game->snake.direction.y = 0;
     game->snake.tailLength = 1;
@@ -654,34 +603,87 @@ void GameInit(Game *game, int width, int height) {
     }
 }
 
-void GameExit(Game *game) {
-    free(game->tileMap.tiles);
+void GameUpdate(Game *game) {
+    if (IsKeyPressed(KEY_SPACE)) {
+        if (!game->isOver) {
+            game->isPaused = !game->isPaused;
+        }
+    }
+
+    if (IsKeyPressed(KEY_ENTER)) {
+        if (game->isOver) {
+            GameRestart(game);
+        }
+    }
+
+    GameUpdateItems(game);
+    GameUpdateSnake(game);
 }
 
-int main(void) {
+void GameDraw(Game *game) {
+    BeginDrawing();
+
+    ClearBackground(BLACK);
+
+    GameDrawTileMap(&game->tileMap);
+    GameDrawItems(game);
+    GameDrawSnake(&game->snake);
+
+    GameDrawUI(game);
+
+    EndDrawing();
+}
+
+void GameInit(Game *game) {
     int windowWidth = 800;
     int windowHeight = 800;
 
     InitWindow(windowWidth, windowHeight, "Snake Game");
     InitAudioDevice();
 
-    Game game;
-    GameInit(&game, windowWidth, windowHeight);
+    game->viewportWidth = windowWidth;
+    game->viewportHeight = windowHeight;
 
-    while (!WindowShouldClose()) {
-        GameUpdate(&game);
+    int rows = 20;
+    int cols = 20;
 
-        BeginDrawing();
+    TileValue *tiles = (TileValue*) malloc(sizeof(TileValue) * rows * cols);
 
-        GameDraw(&game);
-
-        EndDrawing();
+    for (int i = 0; i < rows * cols; i++) {
+        tiles[i] = TILE_EMPTY;
     }
 
-    GameExit(&game);
+    game->tileMap.rows = rows;
+    game->tileMap.cols = cols;
+    game->tileMap.tileWidth = windowWidth / cols;
+    game->tileMap.tileHeight = windowHeight / rows;
+    game->eatSound = LoadSound("assets/eat.ogg");
+    game->appleSpawnRate = 2;
+    game->tileMap.tiles = tiles;
+    game->snake.headWidth = game->tileMap.tileWidth;
+    game->snake.headHeight = game->tileMap.tileHeight;
+
+    GameRestart(game);
+}
+
+void GameExit(Game *game) {
+    free(game->tileMap.tiles);
 
     CloseWindow();
     CloseAudioDevice();
+}
+
+static Game game;
+
+int main(void) {
+    GameInit(&game);
+
+    while (!WindowShouldClose()) {
+        GameUpdate(&game);
+        GameDraw(&game);
+    }
+
+    GameExit(&game);
 
     return 0;
 }
