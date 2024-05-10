@@ -177,12 +177,22 @@ bool GameGetRandomEmptyTile(Game *game, TilePosition *tilePosition) {
         newTilePosition.col = GetRandomValue(0, game->tileMap.cols - 1);
         TileValue tileValue = GameGetTileValue(&game->tileMap, newTilePosition);
 
-        if (tileValue != TILE_WALL && !GameIsSnakeAtTile(&game->snake, newTilePosition) && !GameIsItemAtTile(game, newTilePosition)) {
-            tilePosition->row = newTilePosition.row;
-            tilePosition->col = newTilePosition.col;
-
-            return true;
+        if (tileValue == TILE_WALL) {
+            continue;
         }
+
+        if (GameIsSnakeAtTile(&game->snake, newTilePosition) || GameIsItemAtTile(game, newTilePosition)) {
+            continue;
+        }
+
+        if (newTilePosition.row == game->snake.tilePosition.row || newTilePosition.col == game->snake.tilePosition.col) {
+            continue;
+        }
+
+        tilePosition->row = newTilePosition.row;
+        tilePosition->col = newTilePosition.col;
+
+        return true;
     }
 
     return false;
