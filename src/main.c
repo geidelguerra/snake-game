@@ -420,9 +420,11 @@ void GameDrawSnake(Snake *snake) {
 }
 
 void GameDrawTileMap(TileMap *tileMap) {
+    Color even = {77, 77, 77, 255};
+    Color odd = {0, 0, 0, 255};
     for (int col = 0; col < tileMap->cols; col++) {
         for (int row = 0; row < tileMap->rows; row++) {
-            Color tileColor = (row + col) % 2 == 0 ? LIGHTGRAY : GRAY;
+            Color tileColor = (row + col) % 2 == 0 ? even : odd;
             DrawRectangle(col * tileMap->tileWidth, row * tileMap->tileHeight, tileMap->tileWidth, tileMap->tileHeight, tileColor);
         }
     }
@@ -431,7 +433,7 @@ void GameDrawTileMap(TileMap *tileMap) {
 void GameDrawUI(Game *game) {
     char scoreText[32];
     sprintf(scoreText, "Score %d", game->score);
-    DrawText(scoreText, 5, 5, 20, BLACK);
+    DrawText(scoreText, 5, 5, 20, YELLOW);
 
     if (game->isPaused) {
         // Overlay
